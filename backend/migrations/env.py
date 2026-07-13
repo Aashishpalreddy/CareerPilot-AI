@@ -1,13 +1,22 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import create_engine, pool
+from sqlalchemy import engine_from_config, pool
 
 from backend.app.core.config import settings
-from backend.app.database.base import Base
+from backend.app.database.session import Base
+
+# Import ALL models here so Alembic can discover them
 from backend.app.models.user import User
+from backend.app.models.resume import Resume
 
 config = context.config
+
+# Set database URL from application settings
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.DATABASE_URL.replace("%", "%%"),
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -16,8 +25,12 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
+    """Run migrations in offline mode."""
+
+    url = config.get_main_option("sqlalchemy.url")
+
     context.configure(
-        url=settings.DATABASE_URL,
+        url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -28,8 +41,11 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = create_engine(
-        settings.DATABASE_URL,
+    """Run migrations in online mode."""
+
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
