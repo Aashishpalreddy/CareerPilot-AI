@@ -50,3 +50,10 @@ class Resume(Base):
         "User",
         back_populates="resumes",
     )
+    
+    parsed_resume = relationship(
+        "ParsedResume",
+        back_populates="resume",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )

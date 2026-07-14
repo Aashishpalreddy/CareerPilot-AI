@@ -9,6 +9,9 @@ from backend.app.database.session import Base
 # Import ALL models here so Alembic can discover them
 from backend.app.models.user import User
 from backend.app.models.resume import Resume
+from backend.app.models.parsed_resume import ParsedResume
+from backend.app.models.job_description import JobDescription
+from backend.app.models.parsed_job import ParsedJob
 
 config = context.config
 

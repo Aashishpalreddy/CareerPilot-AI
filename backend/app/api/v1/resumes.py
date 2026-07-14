@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -8,17 +10,15 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
-from pathlib import Path
-from sqlalchemy.orm import Session
 
+from backend.app.api.dependencies import get_resume_service
 from backend.app.core.security import get_current_user
-from backend.app.database.session import get_db
 from backend.app.models.user import User
-from backend.app.repositories.resume_repository import ResumeRepository
+from backend.app.schemas.ats import ATSScoreResponse
+from backend.app.schemas.parsed_resume import ParsedResumeResponse
 from backend.app.schemas.resume import ResumeCreate, ResumeResponse
 from backend.app.services.resume_service import ResumeService
 from backend.app.utils.file_handler import save_resume
-
 
 router = APIRouter(
     prefix="/resumes",
@@ -33,16 +33,10 @@ router = APIRouter(
 )
 def create_resume(
     resume: ResumeCreate,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
 ):
-    repository = ResumeRepository(db)
-    service = ResumeService(repository)
-
-    return service.create_resume(
-        current_user,
-        resume,
-    )
+    return service.create_resume(current_user, resume)
 
 
 @router.post(
@@ -53,15 +47,11 @@ def create_resume(
 def upload_resume(
     title: str = Form(...),
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
 ):
-    repository = ResumeRepository(db)
-    service = ResumeService(repository)
-
     try:
         uploaded = save_resume(file)
-
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -74,10 +64,7 @@ def upload_resume(
         file_path=uploaded["filepath"],
     )
 
-    return service.create_resume(
-        current_user,
-        resume,
-    )
+    return service.create_resume(current_user, resume)
 
 
 @router.get(
@@ -85,12 +72,9 @@ def upload_resume(
     response_model=list[ResumeResponse],
 )
 def get_resumes(
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
 ):
-    repository = ResumeRepository(db)
-    service = ResumeService(repository)
-
     return service.get_resumes(current_user)
 
 
@@ -100,11 +84,8 @@ def get_resumes(
 )
 def get_resume(
     resume_id: int,
-    db: Session = Depends(get_db),
+    service: ResumeService = Depends(get_resume_service),
 ):
-    repository = ResumeRepository(db)
-    service = ResumeService(repository)
-
     resume = service.get_resume(resume_id)
 
     if resume is None:
@@ -122,12 +103,9 @@ def get_resume(
 )
 def set_default_resume(
     resume_id: int,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
 ):
-    repository = ResumeRepository(db)
-    service = ResumeService(repository)
-
     resume = service.get_resume(resume_id)
 
     if resume is None:
@@ -147,12 +125,9 @@ def set_default_resume(
 )
 def download_resume(
     resume_id: int,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
 ):
-    repository = ResumeRepository(db)
-    service = ResumeService(repository)
-
     resume = service.get_resume(resume_id)
 
     if resume is None:
@@ -187,11 +162,8 @@ def download_resume(
 )
 def delete_resume(
     resume_id: int,
-    db: Session = Depends(get_db),
+    service: ResumeService = Depends(get_resume_service),
 ):
-    repository = ResumeRepository(db)
-    service = ResumeService(repository)
-
     resume = service.get_resume(resume_id)
 
     if resume is None:
@@ -201,3 +173,55 @@ def delete_resume(
         )
 
     service.delete_resume(resume)
+
+
+@router.post(
+    "/{resume_id}/parse",
+    response_model=ParsedResumeResponse,
+)
+def parse_resume(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
+):
+    resume = service.get_resume(resume_id)
+
+    if resume is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Resume not found",
+        )
+
+    if resume.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
+        )
+
+    return service.parse_resume(resume)
+
+
+@router.post(
+    "/{resume_id}/ats",
+    response_model=ATSScoreResponse,
+)
+def get_ats_score(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
+):
+    resume = service.get_resume(resume_id)
+
+    if resume is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Resume not found",
+        )
+
+    if resume.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
+        )
+
+    return service.get_ats_score(resume)
