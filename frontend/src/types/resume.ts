@@ -1,30 +1,36 @@
 export interface Resume {
   id: number;
-  filename: string;
+  user_id: number;
+  title: string;
+  original_filename: string;
   file_path?: string;
-  uploaded_at: string;
+  created_at: string;
   is_default: boolean;
 }
 
-
 export interface ParsedResume {
   id?: number;
+  resume_id?: number;
 
   summary?: string;
 
   skills?: string[];
 
   experience?: {
+    title?: string;
     company?: string;
-    role?: string;
-    duration?: string;
+    location?: string;
+    start_date?: string;
+    end_date?: string;
     description?: string;
   }[];
 
   education?: {
     institution?: string;
     degree?: string;
-    year?: string;
+    field_of_study?: string;
+    start_date?: string;
+    end_date?: string;
   }[];
 
   projects?: {
@@ -37,9 +43,18 @@ export interface ParsedResume {
 
   technologies?: string[];
 
-  languages?: string[];
-}
+  achievements?: string[];
 
+  languages?: string[];
+
+  years_experience?: number;
+
+  raw_text?: string;
+
+  created_at?: string;
+
+  updated_at?: string;
+}
 
 export interface ATSScore {
   score: number;

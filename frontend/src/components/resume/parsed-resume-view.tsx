@@ -95,7 +95,7 @@ export default function ParsedResumeView({
                 >
 
                   <p className="font-medium">
-                    {exp.role}
+                    {exp.title}
                   </p>
 
 

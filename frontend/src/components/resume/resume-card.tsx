@@ -1,8 +1,13 @@
+import { FileText } from "lucide-react";
+
 import { Resume } from "@/types/resume";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
 
 interface ResumeCardProps {
   resume: Resume;
@@ -12,7 +17,6 @@ interface ResumeCardProps {
   onSetDefault: (id: number) => void;
 }
 
-
 export default function ResumeCard({
   resume,
   onDelete,
@@ -20,44 +24,53 @@ export default function ResumeCard({
   onATS,
   onSetDefault,
 }: ResumeCardProps) {
-
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+    <Card className="w-full transition-shadow hover:shadow-md">
+      <CardHeader className="flex flex-row items-start justify-between">
 
-          <span>
-            {resume.filename}
+        <div className="flex items-center gap-3">
+
+          <FileText className="h-8 w-8 text-blue-600" />
+
+          <div>
+
+            <h3 className="text-lg font-semibold">
+              {resume.original_filename}
+            </h3>
+
+            <p className="text-sm text-muted-foreground">
+              Uploaded on{" "}
+              {new Date(resume.created_at).toLocaleDateString(
+                "en-US",
+                {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                }
+              )}
+            </p>
+
+          </div>
+
+        </div>
+
+        {resume.is_default && (
+          <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+            Default
           </span>
+        )}
 
-
-          {resume.is_default && (
-            <span className="text-sm text-green-600">
-              Default
-            </span>
-          )}
-
-        </CardTitle>
       </CardHeader>
 
-
       <CardContent>
-
-        <p className="text-sm text-muted-foreground mb-4">
-          Uploaded:
-          {" "}
-          {new Date(resume.uploaded_at).toLocaleDateString()}
-        </p>
-
 
         <div className="flex flex-wrap gap-2">
 
           <Button
             onClick={() => onParse(resume.id)}
           >
-            Parse
+            Parse Resume
           </Button>
-
 
           <Button
             variant="secondary"
@@ -65,7 +78,6 @@ export default function ResumeCard({
           >
             ATS Score
           </Button>
-
 
           {!resume.is_default && (
             <Button
@@ -75,7 +87,6 @@ export default function ResumeCard({
               Set Default
             </Button>
           )}
-
 
           <Button
             variant="destructive"

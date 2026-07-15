@@ -5,7 +5,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.database.session import Base
 
-
 class Resume(Base):
     __tablename__ = "resumes"
 
@@ -50,7 +49,7 @@ class Resume(Base):
         "User",
         back_populates="resumes",
     )
-    
+
     parsed_resume = relationship(
         "ParsedResume",
         back_populates="resume",
@@ -59,11 +58,13 @@ class Resume(Base):
     )
 
     tailored_resumes = relationship(
-    "TailoredResume",
-    back_populates="resume",
-)
+        "TailoredResume",
+        back_populates="resume",
+        cascade="all, delete-orphan",
+    )
+
     cover_letters = relationship(
-    "CoverLetter",
-    back_populates="resume",
-    cascade="all, delete-orphan",
-)
+        "CoverLetter",
+        back_populates="resume",
+        cascade="all, delete-orphan",
+    )

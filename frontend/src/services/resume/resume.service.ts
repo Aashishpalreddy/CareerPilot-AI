@@ -19,6 +19,11 @@ export const getResume = async (resumeId: number) => {
 export const uploadResume = async (file: File) => {
   const formData = new FormData();
 
+  formData.append(
+    "title",
+    file.name.replace(/\.[^/.]+$/, "")
+  );
+
   formData.append("file", file);
 
   const response = await api.post(
