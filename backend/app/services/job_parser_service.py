@@ -46,42 +46,82 @@ class JobParserService:
         "REST API",
     ]
 
+
     @staticmethod
     def parse(raw_text: str):
 
         clean_text = JobParserService.clean_html(raw_text)
 
-        skills = []
+        text_lower = clean_text.lower()
 
-        text = clean_text.lower()
+        skills = [
+            skill
+            for skill in JobParserService.SKILLS
+            if skill.lower() in text_lower
+        ]
 
-        for skill in JobParserService.SKILLS:
-
-            if skill.lower() in text:
-                skills.append(skill)
 
         return {
-            "title": None,
+            "title": JobParserService.extract_title(clean_text),
+
             "company": None,
+
             "skills": sorted(set(skills)),
-            "experience": JobParserService.extract_experience(clean_text),
-            "education": JobParserService.extract_education(clean_text),
-            "responsibilities": JobParserService.extract_responsibilities(clean_text),
-            "qualifications": JobParserService.extract_qualifications(clean_text),
+
+            "technologies": sorted(set(skills)),
+
+            "experience":
+                JobParserService.extract_experience(clean_text),
+
+            "education":
+                JobParserService.extract_education(clean_text),
+
+            "responsibilities":
+                JobParserService.extract_responsibilities(clean_text),
+
+            "qualifications":
+                JobParserService.extract_qualifications(clean_text),
+
+            "keywords":
+                skills,
         }
+
 
     @staticmethod
     def clean_html(text: str) -> str:
 
-        soup = BeautifulSoup(text or "", "html.parser")
+        soup = BeautifulSoup(
+            text or "",
+            "html.parser"
+        )
 
         cleaned = soup.get_text("\n")
 
         cleaned = unescape(cleaned)
 
-        cleaned = re.sub(r"\n{2,}", "\n", cleaned)
+        cleaned = re.sub(
+            r"\n{2,}",
+            "\n",
+            cleaned
+        )
 
         return cleaned.strip()
+
+
+    @staticmethod
+    def extract_title(text: str):
+
+        lines = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip()
+        ]
+
+        if lines:
+            return lines[0]
+
+        return None
+
 
     @staticmethod
     def extract_experience(text: str):
@@ -94,6 +134,7 @@ class JobParserService:
 
         return list(set(matches))
 
+
     @staticmethod
     def extract_education(text: str):
 
@@ -105,14 +146,17 @@ class JobParserService:
             "PhD",
             "Computer Science",
             "Engineering",
+            "Information Technology",
         ]
 
         for keyword in keywords:
 
             if keyword.lower() in text.lower():
+
                 education.append(keyword)
 
         return education
+
 
     @staticmethod
     def extract_responsibilities(text: str):
@@ -124,6 +168,7 @@ class JobParserService:
         ]
 
         return lines[:20]
+
 
     @staticmethod
     def extract_qualifications(text: str):

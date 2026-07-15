@@ -10,7 +10,9 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
 
+from backend.app.database.session import get_db
 from backend.app.api.dependencies import get_resume_service
 from backend.app.core.security import get_current_user
 from backend.app.models.user import User
@@ -19,6 +21,10 @@ from backend.app.schemas.parsed_resume import ParsedResumeResponse
 from backend.app.schemas.resume import ResumeCreate, ResumeResponse
 from backend.app.services.resume_service import ResumeService
 from backend.app.utils.file_handler import save_resume
+
+from backend.app.repositories.parsed_resume_repository import (
+    ParsedResumeRepository,
+)
 
 router = APIRouter(
     prefix="/resumes",
@@ -225,3 +231,23 @@ def get_ats_score(
         )
 
     return service.get_ats_score(resume)
+
+
+@router.get(
+    "/parsed/{resume_id}",
+)
+def get_parsed_resume(
+    resume_id: int,
+    db: Session = Depends(get_db),
+):
+    parsed = ParsedResumeRepository(db).get_by_resume_id(
+        resume_id
+    )
+
+    if parsed is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Parsed resume not found.",
+        )
+
+    return parsed

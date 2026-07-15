@@ -16,6 +16,9 @@ from backend.app.services.parsed_job_service import ParsedJobService
 from backend.app.services.match_service import MatchService
 from backend.app.services.ai.recommendation_service import RecommendationService
 
+from backend.app.repositories.saved_job_repository import SavedJobRepository
+from backend.app.services.ai.daily_pipeline_service import DailyPipelineService
+
 
 def get_resume_service(
     db: Session = Depends(get_db),
@@ -87,3 +90,17 @@ def get_recommendation_service(
     return RecommendationService(
         match_service=match_service,
     )
+
+
+def get_saved_job_repository(
+    db: Session = Depends(get_db),
+) -> SavedJobRepository:
+
+    return SavedJobRepository(db)
+
+
+def get_daily_pipeline_service(
+    db: Session = Depends(get_db),
+) -> DailyPipelineService:
+
+    return DailyPipelineService(db)

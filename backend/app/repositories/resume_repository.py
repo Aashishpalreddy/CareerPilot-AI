@@ -28,6 +28,16 @@ class ResumeRepository:
             .first()
         )
 
+    def get_default(self, user_id: int):
+        return (
+            self.db.query(Resume)
+            .filter(
+                Resume.user_id == user_id,
+                Resume.is_default.is_(True),
+            )
+            .first()
+        )
+
     def delete(self, resume: Resume):
         self.db.delete(resume)
         self.db.commit()

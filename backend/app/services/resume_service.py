@@ -8,6 +8,7 @@ from backend.app.repositories.parsed_resume_repository import (
 )
 from backend.app.repositories.resume_repository import ResumeRepository
 from backend.app.schemas.resume import ResumeCreate
+from backend.app.services.ai_resume_parser import AIResumeParser
 from backend.app.services.ats_score_service import ATSScoreService
 from backend.app.services.resume_intelligence_service import (
     ResumeIntelligenceService,
@@ -27,6 +28,7 @@ class ResumeService:
     ):
         self.repository = repository
         self.parsed_repository = parsed_repository
+        self.ai_parser = AIResumeParser()
 
     def create_resume(
         self,
@@ -89,32 +91,78 @@ class ResumeService:
             sections["skills"]
         )
 
+        ai_profile = None
+
+        try:
+            ai_profile = self.ai_parser.parse(raw_text)
+        except Exception:
+            # Keep existing parsing if AI fails
+            ai_profile = None
+
         parsed_resume = self.parsed_repository.get_by_resume_id(
             resume.id
         )
 
-        if parsed_resume:
+        if parsed_resume is None:
 
-            parsed_resume.raw_text = raw_text
+            parsed_resume = ParsedResume(
+                resume_id=resume.id,
+                raw_text=raw_text,
+            )
+
+        parsed_resume.raw_text = raw_text
+
+        if ai_profile:
+
+            parsed_resume.summary = ai_profile.summary
+            parsed_resume.skills = ai_profile.skills
+
+            parsed_resume.experience = [
+                exp.model_dump()
+                for exp in ai_profile.experience
+            ]
+
+            parsed_resume.education = [
+                edu.model_dump()
+                for edu in ai_profile.education
+            ]
+
+            parsed_resume.projects = [
+                project.model_dump()
+                for project in ai_profile.projects
+            ]
+
+            parsed_resume.certifications = [
+                cert.model_dump()
+                for cert in ai_profile.certifications
+            ]
+
+            parsed_resume.technologies = ai_profile.technologies
+            parsed_resume.languages = ai_profile.languages
+            parsed_resume.achievements = ai_profile.achievements
+            parsed_resume.years_experience = (
+                ai_profile.years_experience
+            )
+
+        else:
+
+            parsed_resume.summary = None
             parsed_resume.skills = skills
             parsed_resume.experience = sections["experience"]
             parsed_resume.education = sections["education"]
             parsed_resume.projects = sections["projects"]
-            parsed_resume.certifications = sections["certifications"]
+            parsed_resume.certifications = (
+                sections["certifications"]
+            )
+            parsed_resume.technologies = []
+            parsed_resume.languages = []
+            parsed_resume.achievements = []
+            parsed_resume.years_experience = 0
 
+        if parsed_resume.id:
             return self.parsed_repository.update(
                 parsed_resume
             )
-
-        parsed_resume = ParsedResume(
-            resume_id=resume.id,
-            raw_text=raw_text,
-            skills=skills,
-            experience=sections["experience"],
-            education=sections["education"],
-            projects=sections["projects"],
-            certifications=sections["certifications"],
-        )
 
         return self.parsed_repository.create(
             parsed_resume

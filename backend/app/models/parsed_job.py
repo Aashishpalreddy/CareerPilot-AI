@@ -40,7 +40,32 @@ class ParsedJob(Base):
         nullable=True,
     )
 
-    skills: Mapped[dict | None] = mapped_column(
+    location: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    employment_type: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    job_summary: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    skills: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    preferred_skills: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    technologies: Mapped[list | None] = mapped_column(
         JSONB,
         nullable=True,
     )
@@ -61,6 +86,26 @@ class ParsedJob(Base):
     )
 
     education: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    certifications: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    soft_skills: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    keywords: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    parsed_json: Mapped[dict | None] = mapped_column(
         JSONB,
         nullable=True,
     )

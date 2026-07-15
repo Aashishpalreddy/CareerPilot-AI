@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,11 @@ class ParsedResume(Base):
         nullable=False,
     )
 
+    summary: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     skills: Mapped[list[Any] | None] = mapped_column(
         JSONB,
         nullable=True,
@@ -50,6 +55,26 @@ class ParsedResume(Base):
 
     certifications: Mapped[list[Any] | None] = mapped_column(
         JSONB,
+        nullable=True,
+    )
+
+    technologies: Mapped[list[Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    languages: Mapped[list[Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    achievements: Mapped[list[Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    years_experience: Mapped[float | None] = mapped_column(
+        Float,
         nullable=True,
     )
 

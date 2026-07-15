@@ -66,3 +66,13 @@ class JobDescription(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+
+    tailored_resumes = relationship(
+    "TailoredResume",
+    back_populates="job",
+)
+    cover_letters = relationship(
+    "CoverLetter",
+    back_populates="job",
+    cascade="all, delete-orphan",
+)

@@ -1,0 +1,66 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from backend.app.database.session import get_db
+
+from backend.app.repositories.parsed_job_repository import (
+    ParsedJobRepository,
+)
+from backend.app.repositories.parsed_resume_repository import (
+    ParsedResumeRepository,
+)
+
+from backend.app.schemas.resume_match import (
+    ResumeMatchResponse,
+)
+
+from backend.app.services.resume_match_service import (
+    ResumeMatchService,
+)
+
+router = APIRouter(
+    prefix="/resume-match",
+    tags=["Resume Match"],
+)
+
+
+@router.get(
+    "/{resume_id}/{job_id}",
+    response_model=ResumeMatchResponse,
+)
+def resume_match(
+    resume_id: int,
+    job_id: int,
+    db: Session = Depends(get_db),
+):
+
+    parsed_resume = ParsedResumeRepository(
+        db
+    ).get_by_resume_id(
+        resume_id
+    )
+
+    if parsed_resume is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Parsed resume not found.",
+        )
+
+    parsed_job = ParsedJobRepository(
+        db
+    ).get_by_job_id(
+        job_id
+    )
+
+    if parsed_job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Parsed job not found.",
+        )
+
+    service = ResumeMatchService()
+
+    return service.match(
+        parsed_resume,
+        parsed_job,
+    )

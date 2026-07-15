@@ -57,3 +57,13 @@ class Resume(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+
+    tailored_resumes = relationship(
+    "TailoredResume",
+    back_populates="resume",
+)
+    cover_letters = relationship(
+    "CoverLetter",
+    back_populates="resume",
+    cascade="all, delete-orphan",
+)
