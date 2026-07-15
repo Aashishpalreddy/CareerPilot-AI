@@ -1,6 +1,7 @@
 import axios from "axios";
 import { getToken } from "@/lib/auth";
 
+
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
@@ -8,9 +9,11 @@ export const api = axios.create({
   },
 });
 
+
 // Automatically attach JWT token to every request
 api.interceptors.request.use(
   (config) => {
+
     const token = getToken();
 
     if (token) {
@@ -19,5 +22,8 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+
+  (error) => {
+    return Promise.reject(error);
+  }
 );
