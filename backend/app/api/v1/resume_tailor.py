@@ -68,7 +68,19 @@ def tailor_resume(
         TailoredResumeRepository(db)
     )
 
-    return service.tailor(
+    result = service.tailor(
         parsed_resume,
         parsed_job,
     )
+
+    if result is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "AI tailoring is temporarily unavailable. This can happen "
+                "if the AI provider is rate-limited or out of credits — "
+                "please try again in a few minutes."
+            ),
+        )
+
+    return result

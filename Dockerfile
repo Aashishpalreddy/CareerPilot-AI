@@ -15,6 +15,11 @@ RUN apt-get update \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Auto Apply drives a real Chromium instance via Playwright to fill out
+# application forms; the browser binary + its OS-level deps aren't part
+# of the pip package, so they have to be installed separately.
+RUN playwright install --with-deps chromium
+
 COPY backend/ ./backend/
 COPY alembic.ini ./
 COPY docker/backend-entrypoint.sh ./docker/backend-entrypoint.sh

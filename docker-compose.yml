@@ -35,6 +35,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
       DAILY_PIPELINE_INTERVAL_HOURS: ${DAILY_PIPELINE_INTERVAL_HOURS:-24}
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
+      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
     volumes:
       - uploads:/app/uploads
     ports:

@@ -18,6 +18,7 @@ from backend.app.services.ai.recruiter_contact_service import RecruiterContactSe
 from backend.app.services.ai.auto_apply_service import AutoApplyService
 from backend.app.services.match_service import MatchService
 from backend.app.services.resume_tailor_service import ResumeTailorService
+from backend.app.core.config import settings
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -152,6 +153,14 @@ class DailyPipelineService:
             job_id=job.id,
         )
 
+        if tailor_result is None and cover_letter_result is None:
+            # Both AI calls failed (e.g. the provider is rate-limited or the
+            # account is out of credits) — don't save a job with no actual
+            # materials. The bulk pipeline just skips it like any other
+            # non-match; process_job_for_user turns this into a specific
+            # error for the on-demand caller.
+            return None
+
         classification = ApplyClassifierService.classify(job.job_url)
 
         recruiter_links = RecruiterContactService.build_contact_links(
@@ -179,8 +188,10 @@ class DailyPipelineService:
 
         created_saved_job = self.saved_job_repository.create(saved_job)
 
-        # If eligible, run Auto Apply
-        if classification.auto_apply_eligible:
+        # If eligible, run Auto Apply — gated by AUTO_APPLY_ENABLED so a
+        # public deployment never launches a real browser against a live
+        # company's application page on a stranger's behalf.
+        if classification.auto_apply_eligible and settings.AUTO_APPLY_ENABLED:
             name_parts = user.full_name.split(" ", 1)
             first_name = name_parts[0]
             last_name = name_parts[1] if len(name_parts) > 1 else ""
@@ -283,4 +294,16 @@ class DailyPipelineService:
                 "specific tech stack that overlaps with your resume."
             )
 
-        return await self.process_job(user=user, resume=resume, job=job)
+        result = await self.process_job(user=user, resume=resume, job=job)
+
+        if result is None:
+            # Match score already cleared the bar above, so the only reason
+            # process_job would still come back empty is that both the AI
+            # tailoring and cover-letter calls failed outright.
+            raise TailoringNotPossible(
+                "AI tailoring is temporarily unavailable. This can happen "
+                "if the AI provider is rate-limited or out of credits — "
+                "please try again in a few minutes."
+            )
+
+        return result

@@ -39,8 +39,13 @@ class ResumeTailorService:
         self,
         parsed_resume: ParsedResume,
         parsed_job: ParsedJob,
-    ) -> ResumeTailorResponse:
-        """Core tailoring logic — operates on already-fetched parsed objects."""
+    ) -> ResumeTailorResponse | None:
+        """
+        Core tailoring logic — operates on already-fetched parsed objects.
+        Returns None (instead of raising) if the AI call fails on every
+        attempt — e.g. the Anthropic account is rate-limited or out of
+        credits — so callers can show a clear message instead of a raw 500.
+        """
 
         match = self.matcher.match(parsed_resume, parsed_job)
 
@@ -48,32 +53,44 @@ class ResumeTailorService:
         ats_feedback = None
         best_ai_result = None
         best_ats_score = 0
-        
+
         from backend.app.services.ats_score_service import ATSScoreService
         from backend.app.models.parsed_resume import ParsedResume
 
         for i in range(MAX_ITERATIONS):
-            ai_result = self.ai.tailor(
-                parsed_resume={
-                    "summary": parsed_resume.summary,
-                    "skills": parsed_resume.skills,
-                    "experience": parsed_resume.experience,
-                    "projects": parsed_resume.projects,
-                    "certifications": parsed_resume.certifications,
-                    "technologies": parsed_resume.technologies,
-                },
-                parsed_job={
-                    "title": parsed_job.title,
-                    "summary": parsed_job.job_summary,
-                    "skills": parsed_job.skills,
-                    "technologies": parsed_job.technologies,
-                    "responsibilities": parsed_job.responsibilities,
-                    "qualifications": parsed_job.qualifications,
-                    "keywords": parsed_job.keywords,
-                },
-                ats_feedback=ats_feedback,
-            )
-            
+            try:
+                ai_result = self.ai.tailor(
+                    parsed_resume={
+                        "summary": parsed_resume.summary,
+                        "skills": parsed_resume.skills,
+                        "experience": parsed_resume.experience,
+                        "projects": parsed_resume.projects,
+                        "certifications": parsed_resume.certifications,
+                        "technologies": parsed_resume.technologies,
+                    },
+                    parsed_job={
+                        "title": parsed_job.title,
+                        "summary": parsed_job.job_summary,
+                        "skills": parsed_job.skills,
+                        "technologies": parsed_job.technologies,
+                        "responsibilities": parsed_job.responsibilities,
+                        "qualifications": parsed_job.qualifications,
+                        "keywords": parsed_job.keywords,
+                    },
+                    ats_feedback=ats_feedback,
+                )
+            except Exception:
+                logger.exception(
+                    "AI resume tailoring failed (resume=%s, job=%s)",
+                    parsed_resume.resume_id,
+                    parsed_job.job_id,
+                )
+                # A hard failure (bad API key, no credits, persistent rate
+                # limit) will fail identically on every retry — stop instead
+                # of burning two more calls, but keep whatever the best
+                # result from an earlier iteration was, if any.
+                break
+
             # Create a mock resume text to score
             temp_text = str(ai_result.tailored_summary) + "\n" + " ".join(ai_result.ats_keywords) + "\n" + str(ai_result.tailored_experience) + "\n" + str(ai_result.tailored_projects)
             temp_resume = ParsedResume(
@@ -81,18 +98,21 @@ class ResumeTailorService:
                 skills=ai_result.ats_keywords,
                 raw_text=temp_text
             )
-            
+
             ats_res = ATSScoreService.calculate(temp_resume, parsed_job)
             current_score = ats_res.get("score", 0)
-            
+
             if current_score > best_ats_score:
                 best_ats_score = current_score
                 best_ai_result = ai_result
-                
+
             if current_score >= 90:
                 break
-                
+
             ats_feedback = ats_res
+
+        if best_ai_result is None:
+            return None
 
         ai_result = best_ai_result
 

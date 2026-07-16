@@ -22,8 +22,21 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-opus-4-8"
 
+    # Optional: broadens job discovery via Adzuna's free aggregation API
+    # (developer.adzuna.com). Leave blank to skip this provider entirely.
+    ADZUNA_APP_ID: str = ""
+    ADZUNA_APP_KEY: str = ""
+
     # How often the daily discovery + tailoring pipeline runs, in hours.
     DAILY_PIPELINE_INTERVAL_HOURS: int = 24
+
+    # Auto Apply drives a real headless browser to a live company application
+    # page and fills it with the visitor's info. Defaults to on for local
+    # dev; set to false for any deployment strangers can reach (e.g. a
+    # public demo), since you don't want a random visitor's click launching
+    # a browser against a real company's site. When false, matching jobs
+    # are still tailored and saved, just never handed to the automation step.
+    AUTO_APPLY_ENABLED: bool = True
 
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
