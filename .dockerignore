@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+node_modules
+frontend/node_modules
+frontend/.next
+uploads
+backend/uploads
+generated_documents
+.env
+.env.*
+!.env.example
+downloaded_resume.*
+test_output.json

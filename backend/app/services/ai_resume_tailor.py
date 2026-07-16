@@ -55,6 +55,15 @@ Return JSON exactly like this:
 }
 """
 
+        ats_feedback_block = ""
+        if ats_feedback:
+            ats_feedback_block = (
+                "Previous ATS Feedback to FIX:\n"
+                + json.dumps(ats_feedback, indent=2)
+                + "\n\nYou MUST improve the resume to resolve these "
+                "weaknesses and implement the suggestions."
+            )
+
         user_prompt = f"""
 Resume:
 {json.dumps(parsed_resume, indent=2)}
@@ -62,7 +71,7 @@ Resume:
 Job:
 {json.dumps(parsed_job, indent=2)}
 
-{"Previous ATS Feedback to FIX:\n" + json.dumps(ats_feedback, indent=2) + "\n\nYou MUST improve the resume to resolve these weaknesses and implement the suggestions." if ats_feedback else ""}
+{ats_feedback_block}
 """
         
         try:

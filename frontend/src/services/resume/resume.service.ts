@@ -1,16 +1,17 @@
 import { api } from "@/services/api";
+import type { Resume } from "@/types/resume";
 
 
 // Get all resumes
-export const getResumes = async () => {
-  const response = await api.get("/resumes");
+export const getResumes = async (): Promise<Resume[]> => {
+  const response = await api.get<Resume[]>("/resumes");
   return response.data;
 };
 
 
 // Get single resume
-export const getResume = async (resumeId: number) => {
-  const response = await api.get(`/resumes/${resumeId}`);
+export const getResume = async (resumeId: number): Promise<Resume> => {
+  const response = await api.get<Resume>(`/resumes/${resumeId}`);
   return response.data;
 };
 
