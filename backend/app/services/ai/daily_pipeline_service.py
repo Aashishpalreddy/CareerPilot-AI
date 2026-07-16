@@ -153,6 +153,14 @@ class DailyPipelineService:
             job_id=job.id,
         )
 
+        if tailor_result is None and cover_letter_result is None:
+            # Both AI calls failed (e.g. the provider is rate-limited or the
+            # account is out of credits) — don't save a job with no actual
+            # materials. The bulk pipeline just skips it like any other
+            # non-match; process_job_for_user turns this into a specific
+            # error for the on-demand caller.
+            return None
+
         classification = ApplyClassifierService.classify(job.job_url)
 
         recruiter_links = RecruiterContactService.build_contact_links(
@@ -286,4 +294,16 @@ class DailyPipelineService:
                 "specific tech stack that overlaps with your resume."
             )
 
-        return await self.process_job(user=user, resume=resume, job=job)
+        result = await self.process_job(user=user, resume=resume, job=job)
+
+        if result is None:
+            # Match score already cleared the bar above, so the only reason
+            # process_job would still come back empty is that both the AI
+            # tailoring and cover-letter calls failed outright.
+            raise TailoringNotPossible(
+                "AI tailoring is temporarily unavailable. This can happen "
+                "if the AI provider is rate-limited or out of credits — "
+                "please try again in a few minutes."
+            )
+
+        return result
