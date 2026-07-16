@@ -157,6 +157,11 @@ export default function SavedJobDetailPage({ params }: { params: Promise<{ id: s
 
               {/* Apply / Status Actions */}
               <div className="space-y-3">
+                {savedJob.status === "ready" && (
+                  <p className="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                    Auto-Apply pre-filled the real application form for this job but stopped short of submitting it. Review it and click Apply Now to submit.
+                  </p>
+                )}
                 {savedJob.status === "applied" ? (
                   <Button 
                     className="w-full bg-green-600 hover:bg-green-700 h-12 text-lg text-white"

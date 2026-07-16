@@ -6,16 +6,22 @@ from docx import Document
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from backend.app.api.dependencies import (
     get_daily_pipeline_service,
     get_saved_job_repository,
 )
 from backend.app.core.security import get_current_user
+from backend.app.database.session import get_db
 from backend.app.models.user import User
+from backend.app.repositories.job_repository import JobRepository
 from backend.app.repositories.saved_job_repository import SavedJobRepository
 from backend.app.schemas.saved_job import SavedJobResponse
-from backend.app.services.ai.daily_pipeline_service import DailyPipelineService
+from backend.app.services.ai.daily_pipeline_service import (
+    DailyPipelineService,
+    TailoringNotPossible,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +61,38 @@ async def run_daily_pipeline(
         job_type=request.job_type,
         experience_level=request.experience_level,
     )
+
+
+@router.post("/process-job/{job_id}", response_model=SavedJobResponse)
+async def process_job(
+    job_id: int,
+    current_user: User = Depends(get_current_user),
+    pipeline: DailyPipelineService = Depends(get_daily_pipeline_service),
+    db: Session = Depends(get_db),
+):
+    """
+    On-demand tailoring for a single tracked job: matches it against the
+    user's default resume, generates a tailored resume + cover letter, and
+    auto-applies if the job is on a supported ATS. This is the per-job
+    counterpart to /apply/run — search stays fast because this heavier
+    work only runs for a job the user actually picks.
+    """
+
+    job = JobRepository(db).get_by_id(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    try:
+        saved_job = await pipeline.process_job_for_user(
+            user_id=current_user.id,
+            job_id=job_id,
+        )
+    except TailoringNotPossible as e:
+        raise HTTPException(status_code=422, detail=e.reason)
+
+    return saved_job
 
 
 @router.get("/saved-jobs", response_model=list[SavedJobResponse])

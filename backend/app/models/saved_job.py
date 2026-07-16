@@ -59,9 +59,10 @@ class SavedJob(Base):
 
     recruiter_links: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
-    # saved -> pending review, applied -> user clicked apply / confirmed
-    # submission, skipped -> user dismissed it, failed -> auto-apply attempt
-    # failed and fell back to a manual link
+    # saved -> pending review, ready -> Auto Apply pre-filled the real
+    # application form but stopped short of submitting (by design — it
+    # never clicks Submit), applied -> user clicked Apply / confirmed
+    # submission themselves, dismissed -> user dismissed it
     status: Mapped[str] = mapped_column(
         String(20),
         default="saved",

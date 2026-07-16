@@ -34,12 +34,13 @@ export default function ResumeList() {
     deleteMutation.mutate(id);
   };
 
-  const handleParse = (id: number) => {
-    parseMutation.mutate(id, {
-      onSuccess: () => {
-        router.push(`/resumes/${id}/parsed`);
-      },
-    });
+  const handleParse = async (id: number) => {
+    try {
+      await parseMutation.mutateAsync(id);
+      router.push(`/resumes/${id}/parsed`);
+    } catch {
+      // Error toast is handled inside useParseResume's onError.
+    }
   };
 
   if (isLoading) {

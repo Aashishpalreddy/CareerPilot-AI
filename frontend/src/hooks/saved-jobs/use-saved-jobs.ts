@@ -60,6 +60,27 @@ export function useMarkApplied() {
   });
 }
 
+export function useProcessJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: number) => savedJobService.processJob(jobId),
+    onSuccess: (data: SavedJob) => {
+      queryClient.invalidateQueries({ queryKey: savedJobKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: savedJobKeys.detail(data.id) });
+      toast.success(
+        data.status === "ready"
+          ? "Tailored, and the application form was pre-filled — review and submit it yourself."
+          : "Resume and cover letter tailored for this job."
+      );
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || "Failed to tailor this job");
+    },
+  });
+}
+
 export function useDismissSavedJob() {
   const queryClient = useQueryClient();
 

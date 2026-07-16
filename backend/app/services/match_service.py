@@ -60,13 +60,22 @@ class MatchService:
         if parsed_resume is None or parsed_job is None:
             return None
 
-
+        # The AI parser is instructed to route concrete tech (languages,
+        # frameworks, cloud tools) into `technologies` and only vague/soft
+        # duties into `skills` (e.g. "Collaborative development"). Matching
+        # on `skills` alone therefore compares against exactly the field
+        # least likely to contain real overlap — combine both sides so the
+        # actual tech stack counts.
         resume_skills = self.normalize_skills(
             parsed_resume.skills
+        ) | self.normalize_skills(
+            getattr(parsed_resume, "technologies", None)
         )
 
         job_skills = self.normalize_skills(
             parsed_job.skills
+        ) | self.normalize_skills(
+            getattr(parsed_job, "technologies", None)
         )
 
 

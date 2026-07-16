@@ -39,7 +39,10 @@ export interface ParsedResume {
     technologies?: string[];
   }[];
 
-  certifications?: string[];
+  certifications?: (
+    | string
+    | { name?: string; issuer?: string; issue_date?: string }
+  )[];
 
   technologies?: string[];
 

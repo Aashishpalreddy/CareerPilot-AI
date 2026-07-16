@@ -114,6 +114,11 @@ function JobCard({ savedJob, onDismiss, onApply }: {
             ✉️ Cover Letter Ready
           </span>
         )}
+        {savedJob.status === "ready" && (
+          <span className="px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-xs font-medium">
+            📝 Form Pre-Filled — Review &amp; Submit
+          </span>
+        )}
         {savedJob.status === "applied" && (
           <span className="px-2 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-xs font-medium">
             ✅ Applied

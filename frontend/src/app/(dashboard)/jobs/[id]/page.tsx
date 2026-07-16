@@ -3,9 +3,11 @@
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import { useJob, useParsedJob } from "@/hooks/jobs/use-jobs";
+import { useProcessJob } from "@/hooks/saved-jobs/use-saved-jobs";
+import { savedJobService } from "@/services/saved-job/saved-job.service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ArrowLeft, Building2, MapPin, Globe, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Globe, Loader2, Sparkles, Download, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +17,7 @@ export default function JobDetailsPage({ params }: { params: Promise<{ id: strin
 
   const { data: job, isLoading: isJobLoading } = useJob(jobId);
   const { data: parsedJob, isLoading: isParsedLoading } = useParsedJob(jobId);
+  const processJob = useProcessJob();
 
   if (isJobLoading || isParsedLoading) {
     return (
@@ -71,17 +74,32 @@ export default function JobDetailsPage({ params }: { params: Promise<{ id: strin
                     )}
                   </CardDescription>
                 </div>
-                {job.job_url && (
-                  <a 
-                    href={job.job_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={buttonVariants({ variant: "outline", className: "border-blue-500/30 hover:bg-blue-500/10 text-blue-400" })}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="border-purple-500/30 hover:bg-purple-500/10 text-purple-400"
+                    onClick={() => processJob.mutate(jobId)}
+                    disabled={processJob.isPending}
                   >
-                    <Globe className="w-4 h-4 mr-2" />
-                    Apply Here
-                  </a>
-                )}
+                    {processJob.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 mr-2" />
+                    )}
+                    Tailor & Apply
+                  </Button>
+                  {job.job_url && (
+                    <a
+                      href={job.job_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={buttonVariants({ variant: "outline", className: "border-blue-500/30 hover:bg-blue-500/10 text-blue-400" })}
+                    >
+                      <Globe className="w-4 h-4 mr-2" />
+                      Apply Here
+                    </a>
+                  )}
+                </div>
               </div>
             </CardHeader>
           </Card>
@@ -91,12 +109,70 @@ export default function JobDetailsPage({ params }: { params: Promise<{ id: strin
               <CardTitle>Job Description</CardTitle>
             </CardHeader>
             <CardContent>
-              <div 
+              <div
                 className="prose prose-invert prose-blue max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800"
                 dangerouslySetInnerHTML={{ __html: job.raw_text.replace(/\n/g, '<br/>') }}
               />
             </CardContent>
           </Card>
+
+          {processJob.data && (
+            <Card className="bg-slate-900 border-slate-800 border-t-4 border-t-purple-500">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  Tailored Materials
+                  <Badge variant="secondary" className="ml-2 bg-slate-800 text-slate-300">
+                    Match {Math.round(processJob.data.match_score)}%
+                  </Badge>
+                  {processJob.data.status === "ready" && (
+                    <Badge className="bg-amber-900/50 text-amber-300 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Form Pre-Filled — Review &amp; Submit
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {processJob.data.tailored_resume_text && (
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-400 mb-2">Tailored Resume Summary</h4>
+                    <p className="text-sm text-slate-300 whitespace-pre-line">
+                      {processJob.data.tailored_resume_text}
+                    </p>
+                  </div>
+                )}
+                {processJob.data.cover_letter_text && (
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-400 mb-2">Cover Letter</h4>
+                    <p className="text-sm text-slate-300 whitespace-pre-line">
+                      {processJob.data.cover_letter_text}
+                    </p>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-3 pt-2">
+                  {processJob.data.tailored_resume_text && (
+                    <a
+                      href={savedJobService.getDownloadResumeUrl(processJob.data.id)}
+                      className={buttonVariants({ variant: "outline", size: "sm", className: "border-slate-700 text-slate-300" })}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Resume
+                    </a>
+                  )}
+                  {processJob.data.cover_letter_text && (
+                    <a
+                      href={savedJobService.getDownloadCoverLetterUrl(processJob.data.id)}
+                      className={buttonVariants({ variant: "outline", size: "sm", className: "border-slate-700 text-slate-300" })}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Cover Letter
+                    </a>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar / Metadata */}

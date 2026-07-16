@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useJobs, useDeleteJob } from "@/hooks/jobs/use-jobs";
-import { useRunPipeline } from "@/hooks/pipeline/use-pipeline";
+import { useSearchJobs } from "@/hooks/job-search/use-job-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,9 +12,8 @@ import { Loader2, Plus, Trash2, Search, Zap, ExternalLink, SlidersHorizontal, Ma
 export default function JobsPage() {
   const { data: jobs, isLoading } = useJobs();
   const deleteJob = useDeleteJob();
-  const runPipeline = useRunPipeline();
-  
-  const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const searchJobs = useSearchJobs();
+
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
   const [jobType, setJobType] = useState("");
@@ -22,25 +21,19 @@ export default function JobsPage() {
   const [workArrangement, setWorkArrangement] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  const handleRunPipeline = async () => {
+  const handleSearch = async () => {
     if (!keywords.trim()) {
       alert("Please enter at least one keyword (e.g., 'software engineer').");
       return;
     }
-    
-    setIsPipelineRunning(true);
-    try {
-      await runPipeline.mutateAsync({
-        keywords: keywords.split(",").map(k => k.trim()),
-        location: location || undefined,
-        remote_only: workArrangement === "remote",
-        job_type: jobType || undefined,
-        experience_level: experienceLevel || undefined,
-        work_arrangement: workArrangement || undefined,
-      });
-    } finally {
-      setIsPipelineRunning(false);
-    }
+
+    await searchJobs.mutateAsync({
+      keywords: keywords.split(",").map(k => k.trim()),
+      location: location || undefined,
+      remote_only: workArrangement === "remote",
+      job_type: jobType || undefined,
+      experience_level: experienceLevel || undefined,
+    });
   };
 
   return (
@@ -62,7 +55,7 @@ export default function JobsPage() {
             AI Job Discovery
           </CardTitle>
           <CardDescription>
-            Enter keywords to scan job boards, filter matches against your resume, and auto-tailor materials.
+            Enter keywords to scan job boards and filter for relevant matches. Open a job to tailor your resume and cover letter for it.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -75,8 +68,8 @@ export default function JobsPage() {
                 className="pl-9 bg-slate-800/50 border-slate-700"
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
-                disabled={isPipelineRunning || runPipeline.isPending}
-                onKeyDown={(e) => e.key === "Enter" && handleRunPipeline()}
+                disabled={searchJobs.isPending}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
             </div>
             <Button
@@ -117,10 +110,10 @@ export default function JobsPage() {
                   onChange={(e) => setJobType(e.target.value)}
                   className="w-full h-9 rounded-md border border-slate-700 bg-slate-800/50 px-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 >
-                  <option value="">All Types</option>
-                  <option value="full-time">Full-Time</option>
-                  <option value="contract">Contract</option>
-                  <option value="part-time">Part-Time</option>
+                  <option className="bg-slate-800 text-slate-200" value="">All Types</option>
+                  <option className="bg-slate-800 text-slate-200" value="full-time">Full-Time</option>
+                  <option className="bg-slate-800 text-slate-200" value="contract">Contract</option>
+                  <option className="bg-slate-800 text-slate-200" value="part-time">Part-Time</option>
                 </select>
               </div>
               
@@ -135,10 +128,10 @@ export default function JobsPage() {
                   onChange={(e) => setExperienceLevel(e.target.value)}
                   className="w-full h-9 rounded-md border border-slate-700 bg-slate-800/50 px-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 >
-                  <option value="">All Levels</option>
-                  <option value="entry">Entry Level</option>
-                  <option value="mid">Mid Level</option>
-                  <option value="senior">Senior Level</option>
+                  <option className="bg-slate-800 text-slate-200" value="">All Levels</option>
+                  <option className="bg-slate-800 text-slate-200" value="entry">Entry Level</option>
+                  <option className="bg-slate-800 text-slate-200" value="mid">Mid Level</option>
+                  <option className="bg-slate-800 text-slate-200" value="senior">Senior Level</option>
                 </select>
               </div>
               
@@ -153,30 +146,30 @@ export default function JobsPage() {
                   onChange={(e) => setWorkArrangement(e.target.value)}
                   className="w-full h-9 rounded-md border border-slate-700 bg-slate-800/50 px-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 >
-                  <option value="">Any</option>
-                  <option value="remote">Remote</option>
-                  <option value="hybrid">Hybrid</option>
-                  <option value="onsite">On-site</option>
+                  <option className="bg-slate-800 text-slate-200" value="">Any</option>
+                  <option className="bg-slate-800 text-slate-200" value="remote">Remote</option>
+                  <option className="bg-slate-800 text-slate-200" value="hybrid">Hybrid</option>
+                  <option className="bg-slate-800 text-slate-200" value="onsite">On-site</option>
                 </select>
               </div>
             </div>
           )}
 
           {/* Run Button */}
-          <Button 
+          <Button
             className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
-            onClick={handleRunPipeline}
-            disabled={isPipelineRunning || runPipeline.isPending}
+            onClick={handleSearch}
+            disabled={searchJobs.isPending}
           >
-            {(isPipelineRunning || runPipeline.isPending) ? (
+            {searchJobs.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running Pipeline...
+                Searching...
               </>
             ) : (
               <>
                 <Search className="mr-2 h-4 w-4" />
-                Discover Jobs
+                Search Jobs
               </>
             )}
           </Button>
