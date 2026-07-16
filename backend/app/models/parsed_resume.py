@@ -78,6 +78,26 @@ class ParsedResume(Base):
         nullable=True,
     )
 
+    ats_score: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    ats_strengths: Mapped[list[Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    ats_weaknesses: Mapped[list[Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    ats_suggestions: Mapped[list[Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,

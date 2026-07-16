@@ -9,6 +9,7 @@ from backend.app.api.dependencies import (
     get_job_service,
     get_match_service,
     get_recommendation_service,
+    get_parsed_job_service,
 )
 
 from backend.app.core.security import get_current_user
@@ -25,6 +26,7 @@ from backend.app.schemas.match import MatchResponse
 from backend.app.services.job_service import JobService
 from backend.app.services.match_service import MatchService
 from backend.app.services.ai.recommendation_service import RecommendationService
+from backend.app.services.parsed_job_service import ParsedJobService
 
 
 router = APIRouter(
@@ -45,7 +47,7 @@ def create_job(
 ):
     return service.create_job(
         current_user,
-        job.raw_text,
+        job,
     )
 
 
@@ -113,6 +115,40 @@ def parse_job(
 
     return service.parse_job(job)
 
+
+@router.get(
+    "/parsed/{job_id}",
+    response_model=ParsedJobResponse,
+)
+def get_parsed_job(
+    job_id: int,
+    current_user: User = Depends(get_current_user),
+    job_service: JobService = Depends(get_job_service),
+    parsed_service: ParsedJobService = Depends(get_parsed_job_service),
+):
+    job = job_service.get_job(job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found",
+        )
+
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
+        )
+
+    parsed = parsed_service.repository.get_by_job_id(job_id)
+
+    if parsed is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Parsed job not found. Run parse first.",
+        )
+
+    return parsed
 
 @router.post(
     "/{job_id}/match/{resume_id}",

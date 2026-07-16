@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -70,7 +70,7 @@ class SavedJob(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=datetime.now(timezone.utc),
     )
 
     applied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

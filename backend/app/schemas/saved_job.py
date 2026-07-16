@@ -3,6 +3,19 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
+class JobInfo(BaseModel):
+    """Lightweight nested view of the related JobDescription."""
+
+    id: int
+    title: str | None = None
+    company: str | None = None
+    location: str | None = None
+    source: str | None = None
+    job_url: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SavedJobResponse(BaseModel):
     id: int
     user_id: int
@@ -24,11 +37,13 @@ class SavedJobResponse(BaseModel):
     created_at: datetime
     applied_at: datetime | None = None
 
+    job: JobInfo | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
 class SavedJobSummary(BaseModel):
-    """Lightweight view for list screens - no generated text bodies."""
+    """Lightweight view for list screens — no generated text bodies."""
 
     id: int
     job_id: int

@@ -1,22 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import QueryProvider from "@/providers/query-provider";
 import { AuthProvider } from "@/context/auth-context";
+import { Toaster } from "sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "CareerPilot AI",
-  description: "AI Powered Career Assistant",
+  description: "AI-powered career assistant — smarter resumes, better job matches, faster applications.",
 };
 
 export default function RootLayout({
@@ -27,12 +23,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col font-sans">
         <QueryProvider>
           <AuthProvider>
             {children}
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              theme="dark"
+            />
           </AuthProvider>
         </QueryProvider>
       </body>

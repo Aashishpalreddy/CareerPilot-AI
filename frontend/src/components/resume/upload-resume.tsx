@@ -1,13 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
 import { useUploadResume } from "@/hooks/resumes/use-upload-resume";
 
-export default function UploadResume() {
+interface UploadResumeProps {
+  onSuccessCallback?: () => void;
+}
+
+export default function UploadResume({ onSuccessCallback }: UploadResumeProps = {}) {
   const [file, setFile] = useState<File | null>(null);
+  const router = useRouter();
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -27,10 +33,19 @@ export default function UploadResume() {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!file) return;
 
-    uploadMutation.mutate(file);
+    try {
+      await uploadMutation.mutateAsync(file);
+      if (onSuccessCallback) {
+        onSuccessCallback();
+      } else {
+        router.push("/resumes");
+      }
+    } catch (error) {
+      console.error("Upload failed", error);
+    }
   };
 
   return (

@@ -17,12 +17,17 @@ class JobService:
     def create_job(
         self,
         current_user: User,
-        raw_text: str,
+        job_data,
     ) -> JobDescription:
 
         job = JobDescription(
             user_id=current_user.id,
-            raw_text=raw_text,
+            title=job_data.title,
+            company=job_data.company,
+            location=job_data.location,
+            source=job_data.source,
+            job_url=job_data.job_url,
+            raw_text=job_data.raw_text,
         )
 
         return self.repository.create(job)

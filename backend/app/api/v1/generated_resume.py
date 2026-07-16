@@ -5,6 +5,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.app.database.session import get_db
+from backend.app.core.security import get_current_user
+from backend.app.models.user import User
 
 from backend.app.repositories.resume_repository import (
     ResumeRepository,
@@ -29,6 +31,8 @@ router = APIRouter(
     tags=["Generated Resume"],
 )
 
+GENERATED_DIR = Path("generated_resumes")
+
 
 @router.post(
     "/{resume_id}/{job_id}",
@@ -37,12 +41,11 @@ router = APIRouter(
 def generate_resume(
     resume_id: int,
     job_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
 
-    resume = ResumeRepository(db).get_by_id(
-        resume_id
-    )
+    resume = ResumeRepository(db).get_by_id(resume_id)
 
     if resume is None:
         raise HTTPException(
@@ -50,11 +53,13 @@ def generate_resume(
             detail="Resume not found.",
         )
 
-    parsed_resume = ParsedResumeRepository(
-        db
-    ).get_by_resume_id(
-        resume_id
-    )
+    if resume.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
+        )
+
+    parsed_resume = ParsedResumeRepository(db).get_by_resume_id(resume_id)
 
     if parsed_resume is None:
         raise HTTPException(
@@ -62,12 +67,7 @@ def generate_resume(
             detail="Parsed resume not found.",
         )
 
-    tailored = TailoredResumeRepository(
-        db
-    ).get(
-        resume_id,
-        job_id,
-    )
+    tailored = TailoredResumeRepository(db).get(resume_id, job_id)
 
     if tailored is None:
         raise HTTPException(
@@ -96,14 +96,25 @@ def generate_resume(
 )
 def download_resume(
     filename: str,
+    current_user: User = Depends(get_current_user),
 ):
+    # Sanitize: reject any path separators to prevent traversal
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid filename.",
+        )
 
-    file_path = Path(
-        "generated_resumes"
-    ) / filename
+    file_path = (GENERATED_DIR / filename).resolve()
+
+    # Verify the resolved path stays within the allowed directory
+    if not str(file_path).startswith(str(GENERATED_DIR.resolve())):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid filename.",
+        )
 
     if not file_path.exists():
-
         raise HTTPException(
             status_code=404,
             detail="File not found.",

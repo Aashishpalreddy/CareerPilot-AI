@@ -74,12 +74,12 @@ export function AuthProvider({
   useEffect(() => {
 
     const token = getToken();
-
     if (token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadUser();
     } 
     else {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 0);
     }
 
   }, []);

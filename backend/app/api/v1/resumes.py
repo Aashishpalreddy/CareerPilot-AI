@@ -7,10 +7,12 @@ from fastapi import (
     Form,
     HTTPException,
     UploadFile,
+    BackgroundTasks,
     status,
 )
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+import asyncio
 
 from backend.app.database.session import get_db
 from backend.app.api.dependencies import get_resume_service
@@ -32,6 +34,43 @@ router = APIRouter(
 )
 
 
+async def process_new_resume_background(user_id: int, resume_id: int):
+    from backend.app.database.session import SessionLocal
+    from backend.app.repositories.resume_repository import ResumeRepository
+    from backend.app.repositories.parsed_resume_repository import ParsedResumeRepository
+    from backend.app.services.ai.daily_pipeline_service import DailyPipelineService
+    
+    db = SessionLocal()
+    try:
+        resume_repo = ResumeRepository(db)
+        parsed_repo = ParsedResumeRepository(db)
+        resume_service = ResumeService(resume_repo, parsed_repo)
+        
+        resume = resume_repo.get_by_id(resume_id)
+        if not resume:
+            return
+            
+        # 1. Parse the resume
+        parsed_resume = resume_service.parse_resume(resume)
+        
+        # 2. Extract skills to use as keywords
+        keywords = parsed_resume.skills[:5] if parsed_resume.skills else []
+        if not keywords:
+            keywords = ["Software Engineer"]
+            
+        # 3. Run job discovery pipeline
+        pipeline = DailyPipelineService(db)
+        await pipeline.run_for_user(
+            user_id=user_id,
+            keywords=keywords,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Background processing failed")
+    finally:
+        db.close()
+
+
 @router.post(
     "",
     response_model=ResumeResponse,
@@ -51,6 +90,7 @@ def create_resume(
     status_code=status.HTTP_201_CREATED,
 )
 def upload_resume(
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -64,13 +104,21 @@ def upload_resume(
             detail=str(e),
         )
 
-    resume = ResumeCreate(
+    resume_data = ResumeCreate(
         title=title,
         original_filename=uploaded["original_filename"],
         file_path=uploaded["filepath"],
     )
 
-    return service.create_resume(current_user, resume)
+    created_resume = service.create_resume(current_user, resume_data)
+    
+    background_tasks.add_task(
+        process_new_resume_background,
+        user_id=current_user.id,
+        resume_id=created_resume.id
+    )
+
+    return created_resume
 
 
 @router.get(
@@ -90,6 +138,7 @@ def get_resumes(
 )
 def get_resume(
     resume_id: int,
+    current_user: User = Depends(get_current_user),
     service: ResumeService = Depends(get_resume_service),
 ):
     resume = service.get_resume(resume_id)
@@ -98,6 +147,12 @@ def get_resume(
         raise HTTPException(
             status_code=404,
             detail="Resume not found",
+        )
+
+    if resume.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
         )
 
     return resume
@@ -168,6 +223,7 @@ def download_resume(
 )
 def delete_resume(
     resume_id: int,
+    current_user: User = Depends(get_current_user),
     service: ResumeService = Depends(get_resume_service),
 ):
     resume = service.get_resume(resume_id)
@@ -176,6 +232,12 @@ def delete_resume(
         raise HTTPException(
             status_code=404,
             detail="Resume not found",
+        )
+
+    if resume.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
         )
 
     service.delete_resume(resume)
@@ -238,8 +300,24 @@ def get_ats_score(
 )
 def get_parsed_resume(
     resume_id: int,
+    current_user: User = Depends(get_current_user),
+    service: ResumeService = Depends(get_resume_service),
     db: Session = Depends(get_db),
 ):
+    resume = service.get_resume(resume_id)
+
+    if resume is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Resume not found.",
+        )
+
+    if resume.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
+        )
+
     parsed = ParsedResumeRepository(db).get_by_resume_id(
         resume_id
     )

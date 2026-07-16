@@ -44,7 +44,9 @@ class ResumeService:
             is_default=False,
         )
 
-        return self.repository.create(resume)
+        created = self.repository.create(resume)
+        self.set_default_resume(current_user, created)
+        return created
 
     def get_resumes(self, current_user: User):
         return self.repository.get_by_user(current_user.id)
@@ -79,29 +81,26 @@ class ResumeService:
         resume: Resume,
     ) -> ParsedResume:
 
-        raw_text = ResumeParserService.extract_text(
-            resume.file_path
-        )
-
-        sections = ResumeSectionExtractor.extract_sections(
-            raw_text
-        )
-
-        skills = ResumeIntelligenceService.extract_skills(
-            sections["skills"]
-        )
+        try:
+            raw_text = ResumeParserService.extract_text(resume.file_path)
+            sections = ResumeSectionExtractor.extract_sections(raw_text)
+            skills = ResumeIntelligenceService.extract_skills(sections["skills"])
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).exception(f"Basic parsing failed: {e}")
+            raise ValueError(f"Failed to parse resume file: {e}")
 
         ai_profile = None
 
         try:
             ai_profile = self.ai_parser.parse(raw_text)
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"AI parsing failed, falling back to basic parsing. Error: {e}")
             # Keep existing parsing if AI fails
             ai_profile = None
 
-        parsed_resume = self.parsed_repository.get_by_resume_id(
-            resume.id
-        )
+        parsed_resume = self.parsed_repository.get_by_resume_id(resume.id)
 
         if parsed_resume is None:
 
@@ -172,7 +171,6 @@ class ResumeService:
         self,
         resume: Resume,
     ):
-
         parsed_resume = self.parsed_repository.get_by_resume_id(
             resume.id
         )
@@ -182,6 +180,31 @@ class ResumeService:
                 resume
             )
 
-        return ATSScoreService.calculate(
+        # Return cached score if it exists
+        if parsed_resume.ats_score is not None:
+            return {
+                "score": parsed_resume.ats_score,
+                "strengths": parsed_resume.ats_strengths or [],
+                "weaknesses": parsed_resume.ats_weaknesses or [],
+                "suggestions": parsed_resume.ats_suggestions or [],
+            }
+
+        # Calculate if not cached
+        ats_data = ATSScoreService.calculate(
             parsed_resume
         )
+        
+        # Avoid caching the fallback error data so it can be retried later when API rate limit resets
+        is_fallback = (
+            ats_data.get("strengths") == ["Could not analyze properly due to an error."] or 
+            (ats_data.get("strengths") and "Resume is well structured and parsable by ATS." in ats_data.get("strengths")[0])
+        )
+        
+        if not is_fallback:
+            parsed_resume.ats_score = ats_data.get("score")
+            parsed_resume.ats_strengths = ats_data.get("strengths")
+            parsed_resume.ats_weaknesses = ats_data.get("weaknesses")
+            parsed_resume.ats_suggestions = ats_data.get("suggestions")
+            self.parsed_repository.update(parsed_resume)
+
+        return ats_data

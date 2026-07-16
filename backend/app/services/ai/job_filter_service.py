@@ -1,6 +1,9 @@
 from dataclasses import dataclass
-import re
+import logging
 
+from backend.app.services.ai.llm_client import LLMClient
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class FilterResult:
@@ -12,207 +15,56 @@ class FilterResult:
 
 class JobFilterService:
 
-    ALLOWED_TITLES = {
-        "software engineer",
-        "software developer",
-        "backend engineer",
-        "backend developer",
-        "backend software engineer",
-        "python developer",
-        "python engineer",
-        "ai engineer",
-        "artificial intelligence engineer",
-        "machine learning engineer",
-        "ml engineer",
-        "data engineer",
-        "data scientist",
-        "llm engineer",
-        "nlp engineer",
-        "computer vision engineer",
-        "generative ai engineer",
-        "full stack developer",
-        "full stack engineer",
-        "devops engineer",
-        "cloud engineer",
-        "site reliability engineer",
-        "platform engineer",
-        "research engineer",
-        "robotics engineer",
-        "simulation engineer",
-    }
-
-    REJECT_TITLES = {
-        "sales",
-        "sales closer",
-        "marketing",
-        "designer",
-        "graphic designer",
-        "interface designer",
-        "ui designer",
-        "ux designer",
-        "crm",
-        "crm manager",
-        "lifecycle manager",
-        "customer success",
-        "customer support",
-        "customer service",
-        "recruiter",
-        "account executive",
-        "account manager",
-        "business development",
-        "finance",
-        "hr",
-        "human resources",
-        "operations manager",
-        "virtual assistant",
-        "cashier",
-        "warehouse",
-        "driver",
-        "delivery",
-        "cook",
-        "chef",
-        "bartender",
-        "nurse",
-        "receptionist",
-    }
-
-    TECH_SKILLS = {
-        "python",
-        "java",
-        "c++",
-        "c#",
-        "javascript",
-        "typescript",
-        "react",
-        "node",
-        "django",
-        "flask",
-        "fastapi",
-        "spring",
-        "sql",
-        "postgresql",
-        "mysql",
-        "mongodb",
-        "redis",
-        "docker",
-        "kubernetes",
-        "aws",
-        "azure",
-        "gcp",
-        "tensorflow",
-        "pytorch",
-        "langchain",
-        "llamaindex",
-        "rag",
-        "llm",
-        "huggingface",
-        "openai",
-        "rest api",
-        "git",
-        "github",
-    }
-
-    AI_KEYWORDS = {
-        "machine learning",
-        "deep learning",
-        "artificial intelligence",
-        "generative ai",
-        "computer vision",
-        "natural language processing",
-        "nlp",
-        "llm",
-        "rag",
-        "agentic ai",
-    }
-
-    EXPERIENCE_KEYWORDS = {
-        "software development",
-        "backend development",
-        "api development",
-        "distributed systems",
-        "microservices",
-        "ml pipeline",
-        "production systems",
-    }
-
-    @staticmethod
-    def _contains_phrase(text: str, phrase: str) -> bool:
-        pattern = r"\b" + re.escape(phrase) + r"\b"
-        return re.search(pattern, text) is not None
-
     @classmethod
     def filter_job(
         cls,
         title: str,
         description: str,
     ) -> FilterResult:
+        title = (title or "").strip()
+        description = (description or "").strip()
+        
+        if not title and not description:
+            return FilterResult(False, 1.0, 0, "No title or description provided.")
 
-        title = (title or "").lower()
-        description = (description or "").lower()
+        system_prompt = """
+You are an expert Job Filter AI for a software engineering/AI career platform.
 
-        text = f"{title} {description}"
+Your task is to evaluate the following job title and description and determine if it is highly relevant for a software engineer, data scientist, or AI/ML engineer.
+Reject jobs that are not related to software engineering or AI (e.g., sales, marketing, generic IT support, warehouse, etc.).
 
-        # Reject immediately
-        for keyword in cls.REJECT_TITLES:
-            if cls._contains_phrase(title, keyword):
-                return FilterResult(
-                    accepted=False,
-                    confidence=1.0,
-                    score=0,
-                    reason=f"Rejected because title contains '{keyword}'.",
-                )
+Return JSON in this exact format:
+{
+    "accepted": true/false,
+    "confidence": 0.0 to 1.0,
+    "score": 0 to 100,
+    "reason": "A short, one sentence explanation of why it was accepted or rejected."
+}
+"""
+        
+        user_prompt = f"""
+Job Title: {title}
+Job Description: {description[:3000]}
+"""
 
-        score = 0
-
-        # Strong title match
-        for keyword in cls.ALLOWED_TITLES:
-            if cls._contains_phrase(title, keyword):
-                score += 50
-                break
-
-        matched_skills = sum(
-            1
-            for skill in cls.TECH_SKILLS
-            if skill in text
-        )
-
-        score += matched_skills * 2
-
-        matched_ai = sum(
-            1
-            for keyword in cls.AI_KEYWORDS
-            if keyword in text
-        )
-
-        score += matched_ai * 5
-
-        matched_exp = sum(
-            1
-            for keyword in cls.EXPERIENCE_KEYWORDS
-            if keyword in text
-        )
-
-        score += matched_exp * 10
-
-        if score >= 70:
-            return FilterResult(
-                accepted=True,
-                confidence=0.95,
-                score=score,
-                reason="Excellent AI/Software Engineering match.",
+        try:
+            client = LLMClient()
+            parsed = client.generate_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                max_tokens=1024,
             )
-
-        if score >= 50:
+            
             return FilterResult(
-                accepted=True,
-                confidence=0.75,
-                score=score,
-                reason="Relevant software engineering job.",
+                accepted=bool(parsed.get("accepted", False)),
+                confidence=float(parsed.get("confidence", 0.0)),
+                score=int(parsed.get("score", 0)),
+                reason=str(parsed.get("reason", "No reason provided.")),
             )
-
-        return FilterResult(
-            accepted=False,
-            confidence=0.25,
-            score=score,
-            reason="Low relevance for AI/Software Engineering.",
-        )
+        except Exception as e:
+            logger.exception(f"Failed to filter job with AI API: {e}")
+            # Fallback to basic keyword matching if API fails
+            text = f"{title} {description}".lower()
+            if "engineer" in text or "developer" in text or "data" in text:
+                return FilterResult(True, 0.5, 50, "Fallback: Keywords matched.")
+            return FilterResult(False, 0.5, 0, "Fallback: No keywords matched.")

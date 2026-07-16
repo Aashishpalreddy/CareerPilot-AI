@@ -5,8 +5,9 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.app.database.session import get_db
-
+from backend.app.core.security import get_current_user
 from backend.app.models.cover_letter import CoverLetter
+from backend.app.models.user import User
 
 from backend.app.repositories.cover_letter_repository import (
     CoverLetterRepository,
@@ -38,6 +39,8 @@ router = APIRouter(
     tags=["Cover Letter"],
 )
 
+COVER_LETTER_DIR = Path("generated_documents/cover_letters")
+
 
 @router.post(
     "/generate/{resume_id}/{job_id}",
@@ -45,12 +48,11 @@ router = APIRouter(
 def generate_cover_letter(
     resume_id: int,
     job_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
 
-    resume = ResumeRepository(db).get_by_id(
-        resume_id
-    )
+    resume = ResumeRepository(db).get_by_id(resume_id)
 
     if resume is None:
         raise HTTPException(
@@ -58,9 +60,13 @@ def generate_cover_letter(
             detail="Resume not found.",
         )
 
-    parsed_resume = ParsedResumeRepository(db).get_by_resume_id(
-        resume_id
-    )
+    if resume.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
+        )
+
+    parsed_resume = ParsedResumeRepository(db).get_by_resume_id(resume_id)
 
     if parsed_resume is None:
         raise HTTPException(
@@ -68,9 +74,7 @@ def generate_cover_letter(
             detail="Parsed resume not found.",
         )
 
-    parsed_job = ParsedJobRepository(db).get_by_job_id(
-        job_id
-    )
+    parsed_job = ParsedJobRepository(db).get_by_job_id(job_id)
 
     if parsed_job is None:
         raise HTTPException(
@@ -83,10 +87,7 @@ def generate_cover_letter(
         ParsedJobRepository(db),
     )
 
-    generated = ai_service.generate_cover_letter(
-        resume_id,
-        job_id,
-    )
+    generated = ai_service.generate_cover_letter(resume_id, job_id)
 
     if generated is None:
         raise HTTPException(
@@ -95,7 +96,7 @@ def generate_cover_letter(
         )
 
     cover_letter = CoverLetter(
-        user_id=resume.user_id,
+        user_id=current_user.id,
         resume_id=resume_id,
         job_id=job_id,
         company=parsed_job.company or "Unknown",
@@ -103,19 +104,13 @@ def generate_cover_letter(
         content=generated.cover_letter_text,
     )
 
-    saved = CoverLetterRepository(db).create(
-        cover_letter
-    )
+    saved = CoverLetterRepository(db).create(cover_letter)
 
     filename = CoverLetterDocumentService(
         CoverLetterRepository(db)
-    ).generate_docx(
-        saved.id
-    )
+    ).generate_docx(saved.id)
 
-    saved = CoverLetterRepository(db).get_by_id(
-        saved.id
-    )
+    saved = CoverLetterRepository(db).get_by_id(saved.id)
 
     return {
         "id": saved.id,
@@ -137,12 +132,23 @@ def generate_cover_letter(
 )
 def download_cover_letter(
     filename: str,
+    current_user: User = Depends(get_current_user),
 ):
+    # Sanitize: reject any path separators to prevent traversal
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid filename.",
+        )
 
-    filepath = (
-        Path("generated_documents/cover_letters")
-        / filename
-    )
+    filepath = (COVER_LETTER_DIR / filename).resolve()
+
+    # Verify the resolved path stays within the allowed directory
+    if not str(filepath).startswith(str(COVER_LETTER_DIR.resolve())):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid filename.",
+        )
 
     if not filepath.exists():
         raise HTTPException(

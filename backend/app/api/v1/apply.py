@@ -1,4 +1,10 @@
+import io
+import logging
+from pathlib import Path
+
+from docx import Document
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.app.api.dependencies import (
@@ -8,8 +14,10 @@ from backend.app.api.dependencies import (
 from backend.app.core.security import get_current_user
 from backend.app.models.user import User
 from backend.app.repositories.saved_job_repository import SavedJobRepository
-from backend.app.schemas.saved_job import SavedJobResponse, SavedJobSummary
+from backend.app.schemas.saved_job import SavedJobResponse
 from backend.app.services.ai.daily_pipeline_service import DailyPipelineService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/apply", tags=["Apply"])
 
@@ -18,6 +26,9 @@ class RunPipelineRequest(BaseModel):
     keywords: list[str]
     location: str | None = None
     remote_only: bool = False
+    job_type: str | None = None          # full-time, contract, part-time
+    experience_level: str | None = None  # entry, mid, senior
+    work_arrangement: str | None = None  # onsite, hybrid, remote
 
 
 @router.post("/run", response_model=list[SavedJobResponse])
@@ -31,15 +42,22 @@ async def run_daily_pipeline(
     In production this same call is what the daily scheduler triggers.
     """
 
+    # Map work_arrangement to remote_only for backward compatibility
+    remote_only = request.remote_only
+    if request.work_arrangement == "remote":
+        remote_only = True
+
     return await pipeline.run_for_user(
         user_id=current_user.id,
         keywords=request.keywords,
         location=request.location,
-        remote_only=request.remote_only,
+        remote_only=remote_only,
+        job_type=request.job_type,
+        experience_level=request.experience_level,
     )
 
 
-@router.get("/saved-jobs", response_model=list[SavedJobSummary])
+@router.get("/saved-jobs", response_model=list[SavedJobResponse])
 def list_saved_jobs(
     status_filter: str | None = None,
     current_user: User = Depends(get_current_user),
@@ -106,3 +124,102 @@ def dismiss_saved_job(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     repository.delete(saved_job)
+
+
+# ── Document download endpoints ──────────────────────────────────────
+
+
+def _make_docx(title: str, body_text: str) -> io.BytesIO:
+    """Create a simple .docx from plain text and return as BytesIO."""
+    doc = Document()
+    doc.add_heading(title, level=1)
+
+    for paragraph in body_text.split("\n"):
+        stripped = paragraph.strip()
+        if stripped:
+            doc.add_paragraph(stripped)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf
+
+
+@router.get("/saved-jobs/{saved_job_id}/download-resume")
+def download_tailored_resume(
+    saved_job_id: int,
+    current_user: User = Depends(get_current_user),
+    repository: SavedJobRepository = Depends(get_saved_job_repository),
+):
+    """Generate and download a .docx of the tailored resume text."""
+
+    saved_job = repository.get_by_id(saved_job_id)
+
+    if saved_job is None:
+        raise HTTPException(status_code=404, detail="Saved job not found")
+
+    if saved_job.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if not saved_job.tailored_resume_text:
+        raise HTTPException(
+            status_code=404,
+            detail="No tailored resume available for this job.",
+        )
+
+    company = ""
+    if saved_job.job:
+        company = saved_job.job.company or "Company"
+
+    buf = _make_docx(
+        title=f"Tailored Resume — {company}",
+        body_text=saved_job.tailored_resume_text,
+    )
+
+    filename = f"tailored_resume_{saved_job_id}.docx"
+
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/saved-jobs/{saved_job_id}/download-cover-letter")
+def download_cover_letter(
+    saved_job_id: int,
+    current_user: User = Depends(get_current_user),
+    repository: SavedJobRepository = Depends(get_saved_job_repository),
+):
+    """Generate and download a .docx of the cover letter text."""
+
+    saved_job = repository.get_by_id(saved_job_id)
+
+    if saved_job is None:
+        raise HTTPException(status_code=404, detail="Saved job not found")
+
+    if saved_job.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if not saved_job.cover_letter_text:
+        raise HTTPException(
+            status_code=404,
+            detail="No cover letter available for this job.",
+        )
+
+    company = ""
+    if saved_job.job:
+        company = saved_job.job.company or "Company"
+
+    buf = _make_docx(
+        title=f"Cover Letter — {company}",
+        body_text=saved_job.cover_letter_text,
+    )
+
+    filename = f"cover_letter_{saved_job_id}.docx"
+
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

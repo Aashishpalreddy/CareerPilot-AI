@@ -3,6 +3,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from backend.app.models.saved_job import SavedJob
+from backend.app.models.user import User
 from backend.app.repositories.parsed_job_repository import ParsedJobRepository
 from backend.app.repositories.parsed_resume_repository import ParsedResumeRepository
 from backend.app.repositories.resume_repository import ResumeRepository
@@ -11,8 +12,10 @@ from backend.app.services.ai.apply_classifier_service import ApplyClassifierServ
 from backend.app.services.ai.cover_letter_service import CoverLetterService
 from backend.app.services.ai.job_discovery_service import JobDiscoveryService
 from backend.app.services.ai.recruiter_contact_service import RecruiterContactService
+from backend.app.services.ai.auto_apply_service import AutoApplyService
 from backend.app.services.match_service import MatchService
 from backend.app.services.resume_tailor_service import ResumeTailorService
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +63,14 @@ class DailyPipelineService:
         keywords: list[str],
         location: str | None = None,
         remote_only: bool = False,
+        job_type: str | None = None,
+        experience_level: str | None = None,
     ) -> list[SavedJob]:
+
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.warning("User %s not found; skipping pipeline.", user_id)
+            return []
 
         resume = self.resume_repository.get_default(user_id)
 
@@ -76,6 +86,8 @@ class DailyPipelineService:
             keywords=keywords,
             location=location,
             remote_only=remote_only,
+            job_type=job_type,
+            experience_level=experience_level,
         )
 
         saved: list[SavedJob] = []
@@ -85,7 +97,8 @@ class DailyPipelineService:
             if self.saved_job_repository.get_by_user_and_job(user_id, job.id):
                 continue
 
-            match = self.match_service.match_resume_to_job(
+            match = await asyncio.to_thread(
+                self.match_service.match_resume_to_job,
                 resume_id=resume.id,
                 job_id=job.id,
             )
@@ -93,12 +106,14 @@ class DailyPipelineService:
             if match is None or match.match_score < MIN_MATCH_SCORE_FOR_TAILORING:
                 continue
 
-            tailor_result = self.resume_tailor_service.tailor_resume(
+            tailor_result = await asyncio.to_thread(
+                self.resume_tailor_service.tailor_resume,
                 resume_id=resume.id,
                 job_id=job.id,
             )
 
-            cover_letter_result = self.cover_letter_service.generate_cover_letter(
+            cover_letter_result = await asyncio.to_thread(
+                self.cover_letter_service.generate_cover_letter,
                 resume_id=resume.id,
                 job_id=job.id,
             )
@@ -115,7 +130,7 @@ class DailyPipelineService:
                 resume_id=resume.id,
                 match_score=match.match_score,
                 tailored_resume_text=(
-                    tailor_result.tailored_resume_text if tailor_result else None
+                    tailor_result.tailored_summary if tailor_result else None
                 ),
                 cover_letter_text=(
                     cover_letter_result.cover_letter_text
@@ -128,7 +143,34 @@ class DailyPipelineService:
                 status="saved",
             )
 
-            saved.append(self.saved_job_repository.create(saved_job))
+            created_saved_job = self.saved_job_repository.create(saved_job)
+            saved.append(created_saved_job)
+            
+            # If eligible, run Auto Apply
+            if classification.auto_apply_eligible:
+                name_parts = user.full_name.split(" ", 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+                user_info = {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "email": user.email,
+                    "phone": getattr(user, "phone", "1234567890")
+                }
+                
+                # We would normally write out the tailored resume to a temporary PDF file here
+                # and pass its path to `resume_path`.
+                success = await AutoApplyService.apply_to_job(
+                    job_url=classification.apply_url or job.job_url,
+                    user_info=user_info,
+                    resume_path=resume.file_path,
+                    cover_letter_text=cover_letter_result.cover_letter_text if cover_letter_result else None,
+                )
+                
+                if success:
+                    created_saved_job.status = "applied"
+                    self.saved_job_repository.update(created_saved_job)
 
             logger.info(
                 "Saved job %s (%s) for user %s, match_score=%.1f, "

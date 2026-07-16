@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.app.database.session import get_db
+from backend.app.core.security import get_current_user
+from backend.app.models.user import User
 
 from backend.app.repositories.parsed_job_repository import (
     ParsedJobRepository,
@@ -31,6 +33,7 @@ router = APIRouter(
 def resume_match(
     resume_id: int,
     job_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
 
