@@ -5,7 +5,9 @@ from sqlalchemy import URL
 class Settings(BaseSettings):
     APP_NAME: str = "CareerPilot AI"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    # Production-safe default. Enable locally via DEBUG=True in .env to turn
+    # on SQLAlchemy engine echo and verbose behaviour.
+    DEBUG: bool = False
 
     DB_HOST: str
     DB_PORT: int

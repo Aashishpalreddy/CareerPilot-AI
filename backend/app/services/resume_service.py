@@ -84,7 +84,16 @@ class ResumeService:
         try:
             raw_text = ResumeParserService.extract_text(resume.file_path)
             sections = ResumeSectionExtractor.extract_sections(raw_text)
-            skills = ResumeIntelligenceService.extract_skills(sections["skills"])
+            categorized_skills = ResumeIntelligenceService.extract_skills(
+                sections["skills"]
+            )
+            # Flatten the categorized skill dict into a de-duplicated flat
+            # list so it matches the ParsedResume schema (list[str]).
+            skills: list[str] = []
+            for skill_group in categorized_skills.values():
+                for skill in skill_group:
+                    if skill not in skills:
+                        skills.append(skill)
         except Exception as e:
             import logging
             logging.getLogger(__name__).exception(f"Basic parsing failed: {e}")

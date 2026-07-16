@@ -56,7 +56,7 @@ export default function ResumeList() {
 
   return (
     <div className="grid gap-4">
-      {resumes.map((resume: { id: number; [key: string]: unknown }) => (
+      {resumes.map((resume) => (
         <ResumeCard
           key={resume.id}
           resume={resume}

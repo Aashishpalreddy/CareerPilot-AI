@@ -1,7 +1,5 @@
-import { api } from "@/services/api";
+import { api, API_BASE_URL } from "@/services/api";
 import type { SavedJob } from "@/types/job";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export const savedJobService = {
   async list(): Promise<SavedJob[]> {

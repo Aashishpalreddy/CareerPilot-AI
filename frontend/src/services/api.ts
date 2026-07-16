@@ -1,8 +1,14 @@
 import axios from "axios";
 import { getToken, removeToken } from "@/lib/auth";
 
+// Single source of truth for the backend origin. The backend mounts its
+// routers at the root (e.g. /auth, /resumes, /apply), so this must NOT
+// include an /api/v1 suffix. Override via NEXT_PUBLIC_API_URL in production.
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

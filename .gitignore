@@ -159,3 +159,6 @@ generated_documents/
 
 # Local secrets
 secrets/
+# Local scratch artifacts
+downloaded_resume.*
+test_output.json
