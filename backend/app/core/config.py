@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-flash-latest"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-opus-4-8"
 
     # How often the daily discovery + tailoring pipeline runs, in hours.
     DAILY_PIPELINE_INTERVAL_HOURS: int = 24

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class AIResumeParser:
     """
-    Uses Google Gemini via LLMClient to convert an unstructured resume into a
+    Uses Claude via LLMClient to convert an unstructured resume into a
     structured ResumeProfile.
     """
 
@@ -27,18 +27,28 @@ IMPORTANT RULES:
   - "" for strings
   - [] for arrays
   - 0 for numeric values
+- Each "description" must be a single string (join bullet points with newlines).
+- Each certification must be an object, not a plain string.
 
-Return JSON in this exact format:
+Return JSON in this exact format (respect the field shapes):
 {
     "summary": "",
-    "skills": [],
-    "experience": [],
-    "education": [],
-    "projects": [],
-    "certifications": [],
-    "technologies": [],
-    "languages": [],
-    "achievements": [],
+    "skills": ["string"],
+    "experience": [
+        {"company": "", "title": "", "location": "", "start_date": "", "end_date": "", "description": ""}
+    ],
+    "education": [
+        {"institution": "", "degree": "", "field_of_study": "", "start_date": "", "end_date": ""}
+    ],
+    "projects": [
+        {"name": "", "description": "", "technologies": ["string"]}
+    ],
+    "certifications": [
+        {"name": "", "issuer": "", "issue_date": ""}
+    ],
+    "technologies": ["string"],
+    "languages": ["string"],
+    "achievements": ["string"],
     "years_experience": 0
 }
 """

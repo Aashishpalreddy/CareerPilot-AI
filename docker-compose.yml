@@ -32,8 +32,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-secret}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
       DAILY_PIPELINE_INTERVAL_HOURS: ${DAILY_PIPELINE_INTERVAL_HOURS:-24}
     volumes:
       - uploads:/app/uploads

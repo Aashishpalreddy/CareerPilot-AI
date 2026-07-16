@@ -16,7 +16,7 @@ letter to each role, and can prepare applications automatically.
 | Backend    | Python 3.11, FastAPI, SQLAlchemy ORM, Alembic (migrations), APScheduler         |
 | Database   | PostgreSQL 16                                                                    |
 | Frontend   | Next.js (React 19, TypeScript), Tailwind CSS, shadcn/ui, TanStack Query          |
-| AI         | Google Gemini API (wrapped in a single `LLMClient`), with heuristic fallbacks    |
+| AI         | Anthropic Claude API (wrapped in a single `LLMClient`), with heuristic fallbacks |
 | Automation | Playwright (optional, for auto-apply browser flows)                             |
 
 ---
@@ -26,7 +26,7 @@ letter to each role, and can prepare applications automatically.
 The fastest way to run the whole stack (Postgres + backend + frontend):
 
 ```bash
-cp .env.example .env          # then edit secrets (SECRET_KEY, GEMINI_API_KEY, ...)
+cp .env.example .env          # then edit secrets (SECRET_KEY, ANTHROPIC_API_KEY, ...)
 docker compose up --build
 ```
 
@@ -91,8 +91,8 @@ Backend (`.env`, see `.env.example`):
 | `SECRET_KEY`                    | yes      | JWT signing secret. Use a long random value in production.         |
 | `ALGORITHM`                     | no       | JWT algorithm. Default `HS256`.                                    |
 | `ACCESS_TOKEN_EXPIRE_MINUTES`   | no       | Access-token lifetime. Default `30`.                              |
-| `GEMINI_API_KEY`                | no       | Google Gemini key. If blank, AI features use heuristic fallbacks.  |
-| `GEMINI_MODEL`                  | no       | Gemini model name. Default `gemini-flash-latest`.                  |
+| `ANTHROPIC_API_KEY`             | no       | Anthropic Claude key. If blank, AI features use heuristic fallbacks. |
+| `ANTHROPIC_MODEL`               | no       | Claude model ID. Default `claude-opus-4-8`.                        |
 | `DAILY_PIPELINE_INTERVAL_HOURS` | no       | How often the discovery/tailoring pipeline runs. Default `24`.     |
 | `BACKEND_CORS_ORIGINS`          | no       | JSON array of allowed frontend origins.                            |
 
@@ -111,7 +111,7 @@ Frontend (`frontend/.env.local`):
   no AI key is configured.
 - **ATS Analyzer** — `ATSScoreService` returns a score out of 100 with
   strengths, weaknesses, and suggestions. Falls back to a deterministic
-  heuristic score when the Gemini quota is exhausted (and does not cache the
+  heuristic score when the Claude quota is exhausted (and does not cache the
   fallback, so a real score can be fetched later).
 - **Job Discovery Pipeline** — `DailyPipelineService` fetches jobs from
   providers (Greenhouse, RemoteOK), matches them against the default resume,
