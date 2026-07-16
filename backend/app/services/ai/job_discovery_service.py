@@ -109,7 +109,11 @@ class JobDiscoveryService:
                     )
 
                     saved_job = self.job_repository.create(job)
-                    self.parsed_job_service.parse_job(saved_job)
+                    # Fast, rule-based parse only — no per-job Claude call, so a
+                    # search returns in seconds instead of blocking on one API
+                    # call per job. Full AI parsing happens on demand when the
+                    # user opens an individual job.
+                    self.parsed_job_service.parse_job(saved_job, use_ai=False)
                     saved_jobs.append(saved_job)
                     saved_count += 1
 
