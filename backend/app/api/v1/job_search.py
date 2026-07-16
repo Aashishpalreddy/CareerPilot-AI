@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from backend.app.database.session import get_db
 from backend.app.models.user import User
 from backend.app.core.security import get_current_user
+from backend.app.schemas.job import JobResponse
 from backend.app.services.ai.job_discovery_service import JobDiscoveryService
 
 
@@ -23,6 +24,11 @@ class JobSearchRequest(BaseModel):
     max_results: int = 50
 
 
+class JobSearchResponse(BaseModel):
+    total_jobs: int
+    jobs: list[JobResponse]
+
+
 def get_job_discovery_service(
     db: Session = Depends(get_db),
 ) -> JobDiscoveryService:
@@ -32,7 +38,7 @@ def get_job_discovery_service(
     )
 
 
-@router.post("/")
+@router.post("/", response_model=JobSearchResponse)
 async def search_jobs(
     request: JobSearchRequest,
     current_user: User = Depends(get_current_user),
