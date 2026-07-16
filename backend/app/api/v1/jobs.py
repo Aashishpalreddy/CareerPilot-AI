@@ -142,11 +142,15 @@ def get_parsed_job(
 
     parsed = parsed_service.repository.get_by_job_id(job_id)
 
-    if parsed is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Parsed job not found. Run parse first.",
-        )
+    # Jobs found via discovery are saved with the fast rule-based parser.
+    # Upgrade to full Claude AI parsing the first time a job is actually
+    # opened, then cache it so later views are instant.
+    needs_ai_parse = parsed is None or not (
+        (parsed.parsed_json or {}).get("ai_parsed")
+    )
+
+    if needs_ai_parse:
+        parsed = parsed_service.parse_job(job, use_ai=True)
 
     return parsed
 

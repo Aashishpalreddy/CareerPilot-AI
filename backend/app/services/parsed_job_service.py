@@ -23,28 +23,45 @@ class ParsedJobService:
     def parse_job(
         self,
         job: JobDescription,
+        use_ai: bool = True,
     ) -> ParsedJob:
+        """Parse a job description into structured fields.
 
-        try:
-            # Primary parser: Claude AI
-            parsed_response = self.ai_parser.parse(
-                job.raw_text
-            )
+        ``use_ai=True`` (default) uses the Claude AI parser and is used when a
+        single job is opened. ``use_ai=False`` uses only the fast rule-based
+        parser and makes no API calls — used during bulk job discovery so a
+        search doesn't block on one Claude call per job. Jobs saved with the
+        rule-based parser are transparently upgraded to AI parsing the first
+        time they're viewed (see the parsed-job endpoint).
+        """
 
-            parsed = parsed_response.model_dump()
+        parsed = None
 
+        if use_ai:
+            try:
+                # Primary parser: Claude AI
+                parsed_response = self.ai_parser.parse(
+                    job.raw_text
+                )
 
-        except Exception as e:
+                parsed = parsed_response.model_dump()
+                parsed["ai_parsed"] = True
 
-            print(
-                "AI JOB PARSER FAILED:",
-                str(e)
-            )
+            except Exception as e:
 
-            # Fallback parser: Rule based
+                print(
+                    "AI JOB PARSER FAILED:",
+                    str(e)
+                )
+
+                parsed = None
+
+        if parsed is None:
+            # Fallback / fast path: rule based, no API calls.
             parsed = JobParserService.parse(
                 job.raw_text
             )
+            parsed["ai_parsed"] = False
 
 
         existing = self.repository.get_by_job_id(
