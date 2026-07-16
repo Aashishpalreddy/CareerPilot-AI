@@ -1,0 +1,59 @@
+databases:
+  - name: careerpilot-db
+    databaseName: careerpilot_ai
+    user: careerpilot
+    plan: free
+
+services:
+  - type: web
+    name: careerpilot-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: careerpilot-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: careerpilot-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: careerpilot-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: careerpilot-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: careerpilot-db
+          property: password
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: DAILY_PIPELINE_INTERVAL_HOURS
+        value: "24"
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-8
+      # Off for this public deployment: don't launch a real browser against
+      # a live company's application page on a stranger's behalf. Flip to
+      # "true" only for a trusted/private deployment.
+      - key: AUTO_APPLY_ENABLED
+        value: "false"
+      # Secrets and deploy-time-dependent values — fill these in from the
+      # Render dashboard after the blueprint creates the service:
+      #   ANTHROPIC_API_KEY     -> your Anthropic API key
+      #   BACKEND_CORS_ORIGINS  -> JSON list including your Vercel frontend
+      #                            URL, e.g. ["https://your-app.vercel.app"]
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: BACKEND_CORS_ORIGINS
+        sync: false

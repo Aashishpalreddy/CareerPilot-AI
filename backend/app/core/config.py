@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     # How often the daily discovery + tailoring pipeline runs, in hours.
     DAILY_PIPELINE_INTERVAL_HOURS: int = 24
 
+    # Auto Apply drives a real headless browser to a live company application
+    # page and fills it with the visitor's info. Defaults to on for local
+    # dev; set to false for any deployment strangers can reach (e.g. a
+    # public demo), since you don't want a random visitor's click launching
+    # a browser against a real company's site. When false, matching jobs
+    # are still tailored and saved, just never handed to the automation step.
+    AUTO_APPLY_ENABLED: bool = True
+
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",

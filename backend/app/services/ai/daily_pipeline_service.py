@@ -18,6 +18,7 @@ from backend.app.services.ai.recruiter_contact_service import RecruiterContactSe
 from backend.app.services.ai.auto_apply_service import AutoApplyService
 from backend.app.services.match_service import MatchService
 from backend.app.services.resume_tailor_service import ResumeTailorService
+from backend.app.core.config import settings
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -179,8 +180,10 @@ class DailyPipelineService:
 
         created_saved_job = self.saved_job_repository.create(saved_job)
 
-        # If eligible, run Auto Apply
-        if classification.auto_apply_eligible:
+        # If eligible, run Auto Apply — gated by AUTO_APPLY_ENABLED so a
+        # public deployment never launches a real browser against a live
+        # company's application page on a stranger's behalf.
+        if classification.auto_apply_eligible and settings.AUTO_APPLY_ENABLED:
             name_parts = user.full_name.split(" ", 1)
             first_name = name_parts[0]
             last_name = name_parts[1] if len(name_parts) > 1 else ""
