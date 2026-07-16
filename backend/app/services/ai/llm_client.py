@@ -47,7 +47,18 @@ class LLMClient:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                system=system_prompt,
+                # Prompt caching: mark the system prompt as cacheable so its
+                # tokens are billed at the reduced cache rate (and skipped
+                # entirely on a cache hit) when the same system prompt is
+                # reused within the cache window. Falls back to normal pricing
+                # automatically when the prefix is below the cache threshold.
+                system=[
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
                 messages=[{"role": "user", "content": user_prompt}],
             )
         except anthropic.APIStatusError as e:
