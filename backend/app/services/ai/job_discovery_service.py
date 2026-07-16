@@ -3,6 +3,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from backend.app.integrations.jobs.adzuna import AdzunaProvider
 from backend.app.integrations.jobs.base import JobProvider
 from backend.app.integrations.jobs.greenhouse import GreenhouseProvider
 from backend.app.integrations.jobs.lever import LeverProvider
@@ -39,6 +40,7 @@ class JobDiscoveryService:
             LeverProvider(),
             RemoteOKProvider(),
             RemotiveProvider(),
+            AdzunaProvider(),
         ]
 
     async def discover_and_save_jobs(

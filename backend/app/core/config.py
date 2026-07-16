@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-opus-4-8"
 
+    # Optional: broadens job discovery via Adzuna's free aggregation API
+    # (developer.adzuna.com). Leave blank to skip this provider entirely.
+    ADZUNA_APP_ID: str = ""
+    ADZUNA_APP_KEY: str = ""
+
     # How often the daily discovery + tailoring pipeline runs, in hours.
     DAILY_PIPELINE_INTERVAL_HOURS: int = 24
 

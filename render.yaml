@@ -53,7 +53,13 @@ services:
       #   ANTHROPIC_API_KEY     -> your Anthropic API key
       #   BACKEND_CORS_ORIGINS  -> JSON list including your Vercel frontend
       #                            URL, e.g. ["https://your-app.vercel.app"]
+      #   ADZUNA_APP_ID/KEY     -> optional, free signup at
+      #                            developer.adzuna.com; leave blank to skip
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: BACKEND_CORS_ORIGINS
+        sync: false
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
         sync: false
