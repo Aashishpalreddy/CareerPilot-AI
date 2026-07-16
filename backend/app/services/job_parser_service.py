@@ -54,10 +54,17 @@ class JobParserService:
 
         text_lower = clean_text.lower()
 
+        # Word-boundary match, not substring — a plain `in` check let e.g.
+        # "Git" match inside "digital"/"legitimate"/"logistics", which
+        # silently corrupted every downstream match score for rule-based
+        # (non-AI) parsed jobs.
         skills = [
             skill
             for skill in JobParserService.SKILLS
-            if skill.lower() in text_lower
+            if re.search(
+                r"\b" + re.escape(skill.lower()) + r"\b",
+                text_lower,
+            )
         ]
 
 

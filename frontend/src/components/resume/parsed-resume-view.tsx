@@ -200,13 +200,21 @@ export default function ParsedResumeView({
             <ul className="list-disc ml-5">
 
               {parsedResume.certifications.map(
-                (cert, index) => (
+                (cert, index) => {
+                  if (typeof cert === "string") {
+                    return <li key={index}>{cert}</li>;
+                  }
 
-                  <li key={index}>
-                    {cert}
-                  </li>
+                  const parts = [cert.name, cert.issuer, cert.issue_date].filter(
+                    (part): part is string => Boolean(part)
+                  );
 
-                )
+                  return (
+                    <li key={index}>
+                      {parts.join(" — ") || "Untitled Certification"}
+                    </li>
+                  );
+                }
               )}
 
             </ul>

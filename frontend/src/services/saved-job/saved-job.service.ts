@@ -17,6 +17,11 @@ export const savedJobService = {
     return response.data;
   },
 
+  async processJob(jobId: number): Promise<SavedJob> {
+    const response = await api.post<SavedJob>(`/apply/process-job/${jobId}`);
+    return response.data;
+  },
+
   async dismiss(id: number): Promise<void> {
     await api.delete(`/apply/saved-jobs/${id}`);
   },

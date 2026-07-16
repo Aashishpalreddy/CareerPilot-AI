@@ -63,8 +63,7 @@ Job Description: {description[:3000]}
             )
         except Exception as e:
             logger.exception(f"Failed to filter job with AI API: {e}")
-            # Fallback to basic keyword matching if API fails
-            text = f"{title} {description}".lower()
-            if "engineer" in text or "developer" in text or "data" in text:
-                return FilterResult(True, 0.5, 50, "Fallback: Keywords matched.")
-            return FilterResult(False, 0.5, 0, "Fallback: No keywords matched.")
+            # Fail closed: if the AI filter call errors (timeout, rate limit),
+            # reject rather than fall back to broad keyword matching that lets
+            # through irrelevant jobs (e.g. "data" matching "Data Entry Clerk").
+            return FilterResult(False, 0.0, 0, "Rejected: AI filter unavailable.")

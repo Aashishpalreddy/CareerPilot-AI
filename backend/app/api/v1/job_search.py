@@ -18,6 +18,8 @@ class JobSearchRequest(BaseModel):
     keywords: list[str]
     location: str | None = None
     remote_only: bool = False
+    job_type: str | None = None
+    experience_level: str | None = None
     max_results: int = 50
 
 
@@ -44,6 +46,8 @@ async def search_jobs(
         keywords=request.keywords,
         location=request.location,
         remote_only=request.remote_only,
+        job_type=request.job_type,
+        experience_level=request.experience_level,
         max_results_per_provider=request.max_results,
     )
 

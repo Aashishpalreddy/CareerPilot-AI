@@ -48,7 +48,7 @@ export interface SavedJob {
   apply_url: string | null;
   auto_apply_eligible: boolean;
   recruiter_links: Record<string, string> | null;
-  status: "saved" | "applied" | "dismissed";
+  status: "saved" | "ready" | "applied" | "dismissed";
   created_at: string;
   applied_at: string | null;
   // Relations (populated when joined)
@@ -115,13 +115,18 @@ export interface ATSScoreResponse {
   suggestions: string[];
 }
 
-// ── Pipeline types ────────────────────────────────────────────────────
+// ── Job Search types ──────────────────────────────────────────────────
 
-export interface PipelineRunRequest {
+export interface JobSearchRequest {
   keywords: string[];
   location?: string;
   remote_only?: boolean;
   job_type?: string;
   experience_level?: string;
-  work_arrangement?: string;
+  max_results?: number;
+}
+
+export interface JobSearchResponse {
+  total_jobs: number;
+  jobs: Job[];
 }
